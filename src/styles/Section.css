@@ -1,0 +1,8 @@
+ /* styles/Section.css */
+ .section h2 {
+    color: var(--secondary-color);
+    margin-top: 25px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 8px;
+  }
+  

@@ -1,0 +1,28 @@
+/* styles/SubSection.css */
+.subsection h3 {
+    color: var(--primary-color);
+    margin-top: 20px;
+    position: relative;
+    padding-left: 30px;
+  }
+  
+  .toggle-btn {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    width: 24px;
+    height: 24px;
+    line-height: 1;
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--primary-color);
+  }
+  
+  .subsection-content.hidden {
+    display: none;
+  }
+  
+  

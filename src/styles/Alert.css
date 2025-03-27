@@ -1,0 +1,36 @@
+ /* styles/Alert.css */
+ .alert {
+    padding: 10px 15px;
+    margin: 15px 0;
+    border-radius: var(--radius);
+  }
+  
+  .warning {
+    background-color: #fffaed;
+    border-left: 4px solid var(--warning-color);
+  }
+  
+  .note {
+    background-color: #e8f4f8;
+    border-left: 4px solid var(--primary-color);
+  }
+  
+  .tip {
+    background-color: #edfaf1;
+    border-left: 4px solid var(--success-color);
+  }
+  
+  .dark-mode .warning {
+    background-color: rgba(243, 156, 18, 0.1);
+    border-left-color: var(--warning-color);
+  }
+  
+  .dark-mode .note {
+    background-color: rgba(52, 152, 219, 0.1);
+    border-left-color: var(--primary-color);
+  }
+  
+  .dark-mode .tip {
+    background-color: rgba(39, 174, 96, 0.1);
+    border-left-color: var(--success-color);
+  }
