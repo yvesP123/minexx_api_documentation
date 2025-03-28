@@ -1,4 +1,4 @@
-// components/ApiTesterModal.js
+// components/ApiTesterModal.js - Modified to better handle URL parameters
 import React, { useState, useEffect } from 'react';
 import '../styles/ApiTesterModal.css';
 
@@ -8,24 +8,28 @@ const ApiTesterModal = ({ config, onClose, baseApiUrl, onSaveData }) => {
   const [token, setToken] = useState(initialToken);
   const [platform, setPlatform] = useState(initialPlatform);
   const [params, setParams] = useState({});
+  const [urlParamValues, setUrlParamValues] = useState({});
   const [body, setBody] = useState({});
   const [responseOutput, setResponseOutput] = useState('Response will appear here...');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // Extract URL parameters from the path (anything in {})
+  const urlParamPattern = /{([^}]+)}/g;
+  const urlParamsInPath = [...path.matchAll(urlParamPattern)].map(match => match[1]);
 
   useEffect(() => {
-    // Initialize parameters from the endpoint
-    const initialParams = { country: "" };
-    
-    // URL parameters
+    // Initialize URL parameters
+    const initialUrlParams = {};
     if (endpoint && endpoint.urlParams && endpoint.urlParams.length > 0) {
       endpoint.urlParams.forEach(param => {
-        if (param.name !== 'country') { // Already added country
-          initialParams[param.name] = "";
-        }
+        initialUrlParams[param.name] = "";
       });
     }
+    setUrlParamValues(initialUrlParams);
     
-    // Query parameters
+    // Initialize query parameters
+    const initialParams = { country: "" };
     if (endpoint && endpoint.queryParams && endpoint.queryParams.length > 0) {
       endpoint.queryParams.forEach(param => {
         if (param.name !== 'country') { // Already added country
@@ -33,24 +37,32 @@ const ApiTesterModal = ({ config, onClose, baseApiUrl, onSaveData }) => {
         }
       });
     }
-    
     setParams(initialParams);
     
     // Initialize request body for POST/PUT
     if (method === 'POST' || method === 'PUT') {
       const initialBody = {};
-      
       if (endpoint && endpoint.bodyParams && endpoint.bodyParams.length > 0) {
         endpoint.bodyParams.forEach(param => {
           initialBody[param.name] = "";
         });
       }
-      
       setBody(initialBody);
     }
-  }, [endpoint, method]);
 
-  // Handle individual parameter changes
+    setError('');
+  }, [endpoint, method, path]);
+
+  // Handle URL parameter changes
+  const handleUrlParamChange = (e) => {
+    const { name, value } = e.target;
+    setUrlParamValues(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Handle query parameter changes
   const handleParamChange = (e) => {
     const { name, value } = e.target;
     setParams(prev => ({
@@ -82,13 +94,40 @@ const ApiTesterModal = ({ config, onClose, baseApiUrl, onSaveData }) => {
   };
 
   const handleExecute = async () => {
+    setError('');
+    
+    // Check for required URL parameters
+    if (urlParamsInPath.length > 0) {
+      const missingParams = [];
+      
+      endpoint.urlParams.forEach(param => {
+        if (param.required && (!urlParamValues[param.name] || urlParamValues[param.name].trim() === '')) {
+          missingParams.push(param.name);
+        }
+      });
+      
+      if (missingParams.length > 0) {
+        setError(`Please provide values for required URL parameters: ${missingParams.join(', ')}`);
+        setResponseOutput('Error: Missing required URL parameters');
+        return;
+      }
+    }
+    
     // Save token and platform to localStorage for future use
     onSaveData(token, platform);
     
-    let finalUrl = baseApiUrl + path;
+    // Process the path by replacing URL parameters
+    let finalPath = path;
+    Object.entries(urlParamValues).forEach(([key, value]) => {
+      if (value) {
+        finalPath = finalPath.replace(`{${key}}`, value);
+      }
+    });
+    
+    let finalUrl = baseApiUrl + finalPath;
     let queryParams = new URLSearchParams();
     
-    // Add non-empty parameters to query string
+    // Add non-empty query parameters
     Object.entries(params).forEach(([key, value]) => {
       if (value) {
         queryParams.append(key, value);
@@ -158,12 +197,51 @@ const ApiTesterModal = ({ config, onClose, baseApiUrl, onSaveData }) => {
         <h3>Test API: {method} {path}</h3>
         
         <div className="api-tester-form">
+          {error && <div className="error-message">{error}</div>}
+          
           <label>API Endpoint:</label>
           <input 
             type="text" 
             value={baseApiUrl + path} 
             readOnly 
           />
+          
+          {/* URL Parameters Section */}
+          {urlParamsInPath.length > 0 && (
+            <div className="url-params-section">
+              <h4>URL Parameters:</h4>
+              <p className="url-params-help">
+                Replace the {"{parameter}"} placeholders in the URL path with actual values
+              </p>
+              
+              {endpoint.urlParams && endpoint.urlParams.map(param => (
+                <div key={`url-${param.name}`} className="url-param-input">
+                  <label>
+                    {param.name} {param.required && <span className="required">*</span>}:
+                  </label>
+                  <input
+                    type="text"
+                    name={param.name}
+                    value={urlParamValues[param.name] || ''}
+                    onChange={handleUrlParamChange}
+                    placeholder={`Enter value for ${param.name}`}
+                  />
+                  <small className="param-description">{param.description}</small>
+                  
+                  {/* Show what the processed URL would look like */}
+                  <div className="url-preview">
+                    <small>
+                      {path.replace(`{${param.name}}`, 
+                        urlParamValues[param.name] ? 
+                        <span className="replaced-param">{urlParamValues[param.name]}</span> : 
+                        `{${param.name}}`
+                      )}
+                    </small>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           
           <label>Authorization Bearer Token:</label>
           <input 
@@ -181,44 +259,44 @@ const ApiTesterModal = ({ config, onClose, baseApiUrl, onSaveData }) => {
             <option value="gold">gold</option>
           </select>
           
-          {method === 'GET' && (
-            <>
-              <label>Country:</label>
-              <input
-                type="text"
-                name="country"
-                value={params.country || ""}
-                onChange={handleParamChange}
-                placeholder="Filter by country (optional)"
-              />
-              
-              {/* Add inputs for other common parameters */}
-              {endpoint && endpoint.queryParams && endpoint.queryParams.map(param => (
-                param.name !== 'country' && (
-                  <div key={param.name}>
-                    <label>{param.name}:</label>
-                    <input
-                      type="text"
-                      name={param.name}
-                      value={params[param.name] || ""}
-                      onChange={handleParamChange}
-                      placeholder={`${param.required ? '(Required)' : '(Optional)'}`}
-                    />
-                  </div>
-                )
-              ))}
-              
-              <label>All Parameters (JSON format):</label>
-              <textarea 
-                value={JSON.stringify(params, null, 2)} 
-                onChange={handleJsonParamsChange}
-              />
-            </>
-          )}
+          {/* Query Parameters Section */}
+          <h4>Query Parameters:</h4>
           
+          <label>Country:</label>
+          <input
+            type="text"
+            name="country"
+            value={params.country || ""}
+            onChange={handleParamChange}
+            placeholder="Filter by country (optional)"
+          />
+          
+          {/* Additional query parameters */}
+          {endpoint && endpoint.queryParams && endpoint.queryParams.map(param => (
+            param.name !== 'country' && (
+              <div key={`query-${param.name}`}>
+                <label>{param.name} {param.required && <span className="required">*</span>}:</label>
+                <input
+                  type="text"
+                  name={param.name}
+                  value={params[param.name] || ""}
+                  onChange={handleParamChange}
+                  placeholder={`${param.required ? '(Required)' : '(Optional)'} ${param.description}`}
+                />
+              </div>
+            )
+          ))}
+          
+          <label>All Parameters (JSON format):</label>
+          <textarea 
+            value={JSON.stringify(params, null, 2)} 
+            onChange={handleJsonParamsChange}
+          />
+          
+          {/* Request Body Section */}
           {(method === 'POST' || method === 'PUT') && (
             <>
-              <label>Request Body (JSON format):</label>
+              <h4>Request Body:</h4>
               <textarea 
                 value={JSON.stringify(body, null, 2)} 
                 onChange={handleBodyChange}

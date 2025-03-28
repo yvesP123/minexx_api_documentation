@@ -1,4 +1,4 @@
-// components/Endpoint.js
+// components/Endpoint.js - Modified to better handle URL parameters
 import React, { useState } from 'react';
 import CodeBlock from './CodeBlock';
 import Tip from './Tip';
@@ -15,6 +15,11 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
     bodyContent: ''
   });
   const [curlCommand, setCurlCommand] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  
+  // Extract URL parameters from the path (anything in {})
+  const urlParamPattern = /{([^}]+)}/g;
+  const urlParamsInPath = [...path.matchAll(urlParamPattern)].map(match => match[1]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -38,6 +43,7 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
 
   const handleTryIt = () => {
     setShowTryForm(!showTryForm);
+    setErrorMessage('');
     
     if (!showTryForm) {
       // Reset form data when opening
@@ -55,22 +61,53 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
   };
 
   const handleTestApi = () => {
-    onApiTest(endpoint, method, path);
+    // First validate URL params if needed
+    if (urlParamsInPath.length > 0) {
+      const missingRequiredParams = urlParams
+        .filter(param => param.required)
+        .filter(param => !formData.urlParams[param.name]);
+      
+      if (missingRequiredParams.length > 0) {
+        setErrorMessage(`Please provide values for required URL parameters: ${missingRequiredParams.map(p => p.name).join(', ')}`);
+        setShowTryForm(true); // Make sure form is visible
+        return;
+      }
+    }
+    
+    // Process the path by replacing URL parameters
+    let processedPath = path;
+    Object.entries(formData.urlParams).forEach(([key, value]) => {
+      if (value) {
+        processedPath = processedPath.replace(`{${key}}`, value);
+      }
+    });
+    
+    // Now call the API test function with the processed path
+    onApiTest({...endpoint, processedPath}, method, processedPath);
   };
 
   const generateCurl = () => {
-    // Build the URL with parameters
-    let processedPath = path;
+    setErrorMessage('');
     
-    // Replace URL parameters
-    if (urlParams && urlParams.length > 0) {
-      urlParams.forEach(param => {
-        const paramValue = formData.urlParams[param.name];
-        if (paramValue) {
-          processedPath = processedPath.replace(`{${param.name}}`, paramValue);
-        }
-      });
+    // Validate URL params if needed
+    if (urlParamsInPath.length > 0) {
+      const missingRequiredParams = urlParams
+        .filter(param => param.required)
+        .filter(param => !formData.urlParams[param.name]);
+      
+      if (missingRequiredParams.length > 0) {
+        setErrorMessage(`Please provide values for required URL parameters: ${missingRequiredParams.map(p => p.name).join(', ')}`);
+        return;
+      }
     }
+    
+    // Process the path by replacing URL parameters
+    let processedPath = path;
+    Object.entries(formData.urlParams).forEach(([key, value]) => {
+      if (value) {
+        processedPath = processedPath.replace(`{${key}}`, value);
+      }
+    });
     
     // Build full URL with query parameters
     let fullUrl = baseApiUrl + processedPath;
@@ -103,14 +140,50 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
     localStorage.setItem('apiPlatform', formData.platform);
   };
 
+  // Function to display path with highlighted parameters
+  const renderPathWithHighlightedParams = () => {
+    if (urlParamsInPath.length === 0) return path;
+    
+    const parts = [];
+    let lastIndex = 0;
+    
+    [...path.matchAll(urlParamPattern)].forEach((match, i) => {
+      // Add the text before the parameter
+      if (match.index > lastIndex) {
+        parts.push(path.substring(lastIndex, match.index));
+      }
+      
+      // Add the parameter with highlighting
+      const paramName = match[1];
+      const paramValue = formData.urlParams[paramName];
+      
+      if (paramValue) {
+        parts.push(<span key={`param-${i}`} className="replaced-param">{paramValue}</span>);
+      } else {
+        parts.push(<span key={`param-${i}`} className="url-param">{match[0]}</span>);
+      }
+      
+      lastIndex = match.index + match[0].length;
+    });
+    
+    // Add any remaining text
+    if (lastIndex < path.length) {
+      parts.push(path.substring(lastIndex));
+    }
+    
+    return <span className="path-with-params">{parts}</span>;
+  };
+
   return (
     <div className="endpoint">
       <h4>
         <span className={`method ${method.toLowerCase()}`}>{method}</span>
-        {path}
+        {renderPathWithHighlightedParams()}
         <button className="try-api-btn" onClick={handleTryIt}>Try it</button>
         <button className="test-api-btn" onClick={handleTestApi}>Test API</button>
-       
+        {method === 'GET' && (
+          <button className="test-browser-btn">Test in Browser</button>
+        )}
       </h4>
       
       <p><strong>Description</strong>: {description}</p>
@@ -164,6 +237,48 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
       
       {showTryForm && (
         <div className="try-it-form">
+          {errorMessage && (
+            <div className="error-message">{errorMessage}</div>
+          )}
+          
+          {/* URL Parameters with Preview - This is the key improvement */}
+          {urlParamsInPath.length > 0 && (
+            <div className="url-params-section">
+              <h5>URL Parameters:</h5>
+              <p className="url-params-help">
+                Replace the {"{parameter}"} placeholders in the URL path with actual values
+              </p>
+              
+              <div className="current-url-preview">
+                <strong>Current URL:</strong> {baseApiUrl}
+                {Object.entries(formData.urlParams).reduce((currentPath, [key, value]) => {
+                  return value 
+                    ? currentPath.replace(`{${key}}`, <span className="replaced-param">{value}</span>) 
+                    : currentPath;
+                }, path)}
+              </div>
+              
+              {urlParams && urlParams.map(param => (
+                <div key={param.name} className="url-param-input">
+                  <label htmlFor={`urlParam_${param.name}-${id}`}>
+                    {param.name} {param.required && <span className="required">*</span>}:
+                  </label>
+                  <input
+                    type="text"
+                    id={`urlParam_${param.name}-${id}`}
+                    name={`urlParam_${param.name}`}
+                    value={formData.urlParams[param.name] || ''}
+                    onChange={handleInputChange}
+                    placeholder={`Example: params (for /${param.name === 'id' ? '231' : param.name})`}
+                    required={param.required}
+                    className={param.required ? 'required-input' : ''}
+                  />
+                  <small className="param-description">{param.description}</small>
+                </div>
+              ))}
+            </div>
+          )}
+          
           <label htmlFor={`token-${id}`}>Bearer Token:</label>
           <input
             type="text"
@@ -185,7 +300,7 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
             <option value="gold">gold</option>
           </select>
           
-          <label htmlFor={`country-${id}`}>Country (optional):</label>
+          <label htmlFor={`country-${id}`}>Country (optional query parameter):</label>
           <input
             type="text"
             id={`country-${id}`}
@@ -194,26 +309,6 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
             onChange={handleInputChange}
             placeholder="e.g. Rwanda"
           />
-          
-          {urlParams && urlParams.length > 0 && (
-            <>
-              <h5>URL Parameters:</h5>
-              {urlParams.map(param => (
-                <div key={param.name}>
-                  <label htmlFor={`urlParam_${param.name}-${id}`}>{param.name}:</label>
-                  <input
-                    type="text"
-                    id={`urlParam_${param.name}-${id}`}
-                    name={`urlParam_${param.name}`}
-                    value={formData.urlParams[param.name] || ''}
-                    onChange={handleInputChange}
-                    placeholder={`Enter ${param.name} value`}
-                    required={param.required}
-                  />
-                </div>
-              ))}
-            </>
-          )}
           
           {(method === 'POST' || method === 'PUT') && (
             <>
@@ -247,4 +342,5 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
     </div>
   );
 };
+
 export default Endpoint;

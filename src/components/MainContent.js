@@ -25,7 +25,7 @@ const MainContent = ({ searchTerm, handleApiTest, baseApiUrl }) => {
     {
       id: 'get-assessments',
       method: 'GET',
-      path: '/asssessments',
+      path: '/assessments',
       description: 'Retrieve all assessments.',
       queryParams: [
         { name: 'country', description: 'Filter assessments by country.', required: false }
@@ -34,7 +34,7 @@ const MainContent = ({ searchTerm, handleApiTest, baseApiUrl }) => {
     {
       id: 'get-assessment-mine',
       method: 'GET',
-      path: '/asssessments/mine/{id}',
+      path: '/assessments/mine/{id}',
       description: 'Retrieve details for a specific assessment.',
       urlParams: [
         { name: 'id', description: 'Unique identifier for the assessment.', required: true }
