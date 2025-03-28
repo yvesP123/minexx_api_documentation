@@ -1096,7 +1096,7 @@ curl -X GET https://minexxapi-db-p7n5ing2cq-uc.a.run.app/companies \\
       
       <Element name="support">
         <Section id="support" title="Support">
-          <p>For API support or to report issues, please contact the developer support team.</p>
+          <p>For API support or to report issues, please contact the developer support team b.akaffou@minexx.co</p>
           <Note>
             <p><strong>API Endpoint URL:</strong> <code>https://minexxapi-db-p7n5ing2cq-uc.a.run.app</code></p>
             <p><strong>Default Platform:</strong> <code>x-platform: 3ts</code></p>
