@@ -363,7 +363,7 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
           </select>
           
           <label htmlFor={`country-${id}`}>
-            Country (auto-filled from token):
+            Country :
             <small style={{ display: 'block', color: '#666', fontWeight: 'normal' }}>
             
             </small>

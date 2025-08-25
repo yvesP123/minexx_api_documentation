@@ -324,7 +324,7 @@ const ApiTesterModal = ({ config, onClose, baseApiUrl, onSaveData }) => {
           <h4>Query Parameters:</h4>
           
           <label>
-            Country (auto-filled from token):
+            Country :
             <small style={{ display: 'block', color: '#666', fontWeight: 'normal', marginTop: '4px' }}>
               
             </small>
