@@ -54,7 +54,7 @@ const ApiTesterModal = ({ config, onClose, baseApiUrl, onSaveData }) => {
   // Function to remove country code from token
   const cleanTokenForRequest = (tokenValue) => {
     // Remove country codes from the end of the token
-    const cleanedToken = tokenValue.replace(/\.(rw|gh|gb|dc|fr|eth|lb)$/i, '');
+    const cleanedToken = tokenValue.replace(/\.(wr|hg|bg|cd|rf|eht|bl)$/i, '');
     return cleanedToken;
   };
 

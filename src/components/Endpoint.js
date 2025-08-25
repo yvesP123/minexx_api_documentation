@@ -57,7 +57,7 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
   // Function to remove country code from token
   const cleanTokenForRequest = (token) => {
     // Remove country codes from the end of the token
-    const cleanedToken = token.replace(/\.(rw|gh|gb|dc|fr|eth|lb)$/i, '');
+    const cleanedToken = token.replace(/\.(wr|hg|bg|cd|rf|eht|bl)$/i, '');
     return cleanedToken;
   };
 
