@@ -1,4 +1,4 @@
-// components/Endpoint.js - Modified to better handle URL parameters
+// components/Endpoint.js - Enhanced with auto country detection
 import React, { useState } from 'react';
 import CodeBlock from './CodeBlock';
 import Tip from './Tip';
@@ -17,9 +17,49 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
   const [curlCommand, setCurlCommand] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   
+  // Country code mapping
+  const countryCodeMap = {
+    'wr': 'Rwanda',
+    'hg': 'Ghana', 
+    'bg': 'Gabon',
+    'cd': 'DRC',
+    'rf': 'France',
+    'eht': 'Ethiopia',
+    'bl': 'Libya'
+  };
+  
   // Extract URL parameters from the path (anything in {})
   const urlParamPattern = /{([^}]+)}/g;
   const urlParamsInPath = [...path.matchAll(urlParamPattern)].map(match => match[1]);
+
+  // Function to detect country from token and auto-fill
+  const detectAndFillCountry = (token) => {
+    // Look for country codes at the end of the token (case insensitive)
+    const match = token.match(/\.([a-z]{2,3})$/i);
+    if (match) {
+      const countryCode = match[1].toLowerCase();
+      const countryName = countryCodeMap[countryCode];
+      if (countryName) {
+        setFormData(prev => ({
+          ...prev,
+          country: countryName
+        }));
+      }
+    } else {
+      // Clear country if no valid code found
+      setFormData(prev => ({
+        ...prev,
+        country: ''
+      }));
+    }
+  };
+
+  // Function to remove country code from token
+  const cleanTokenForRequest = (token) => {
+    // Remove country codes from the end of the token
+    const cleanedToken = token.replace(/\.(rw|gh|gb|dc|fr|eth|lb)$/i, '');
+    return cleanedToken;
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -33,6 +73,13 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
           [paramName]: value
         }
       }));
+    } else if (name === 'token') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+      // Auto-detect and fill country when token changes
+      detectAndFillCountry(value);
     } else {
       setFormData(prev => ({
         ...prev,
@@ -46,9 +93,10 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
     setErrorMessage('');
     
     if (!showTryForm) {
+      const storedToken = localStorage.getItem('apiToken') || '';
       // Reset form data when opening
       setFormData({
-        token: localStorage.getItem('apiToken') || '',
+        token: storedToken,
         platform: localStorage.getItem('apiPlatform') || '3ts',
         country: '',
         urlParams: {},
@@ -56,6 +104,12 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
           ? JSON.stringify(bodyParams.reduce((acc, param) => ({ ...acc, [param.name]: '' }), {}), null, 2)
           : '{}'
       });
+      
+      // Auto-detect country from stored token
+      if (storedToken) {
+        detectAndFillCountry(storedToken);
+      }
+      
       setCurlCommand('');
     }
   };
@@ -121,9 +175,12 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
       fullUrl += '?' + queryParams.join('&');
     }
     
-    // Create curl command
+    // Clean the token by removing country code before using it in the request
+    const cleanedToken = cleanTokenForRequest(formData.token);
+    
+    // Create curl command with cleaned token
     let curl = `curl -X ${method} "${fullUrl}" \\
-  -H "Authorization: Bearer ${formData.token}" \\
+  -H "Authorization: Bearer ${cleanedToken}" \\
   -H "x-refresh: your_refresh_token_here" \\
   -H "x-platform: ${formData.platform}"`;
     
@@ -241,7 +298,7 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
             <div className="error-message">{errorMessage}</div>
           )}
           
-          {/* URL Parameters with Preview - This is the key improvement */}
+          {/* URL Parameters with Preview */}
           {urlParamsInPath.length > 0 && (
             <div className="url-params-section">
               <h5>URL Parameters:</h5>
@@ -279,7 +336,12 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
             </div>
           )}
           
-          <label htmlFor={`token-${id}`}>Bearer Token:</label>
+          <label htmlFor={`token-${id}`}>
+            Bearer Token:
+            <small style={{ display: 'block', color: '#666', fontWeight: 'normal' }}>
+             
+            </small>
+          </label>
           <input
             type="text"
             id={`token-${id}`}
@@ -300,14 +362,19 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
             <option value="gold">gold</option>
           </select>
           
-          <label htmlFor={`country-${id}`}>Country (optional query parameter):</label>
+          <label htmlFor={`country-${id}`}>
+            Country (auto-filled from token):
+            <small style={{ display: 'block', color: '#666', fontWeight: 'normal' }}>
+            
+            </small>
+          </label>
           <input
             type="text"
             id={`country-${id}`}
             name="country"
             value={formData.country}
             onChange={handleInputChange}
-            placeholder="e.g. Rwanda"
+            readOnly
           />
           
           {(method === 'POST' || method === 'PUT') && (
@@ -334,7 +401,11 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
               <CodeBlock copyable={true}>
                 {curlCommand}
               </CodeBlock>
-              <p className="note">Note: This tool shows the API request format but doesn't execute it. Copy this command to your terminal or use tools like Postman to make the actual request.</p>
+              <p className="note">
+                Note: This tool shows the API request format but doesn't execute it. 
+                Copy this command to your terminal or use tools like Postman to make the actual request.
+                
+              </p>
             </div>
           )}
         </div>

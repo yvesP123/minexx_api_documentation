@@ -12,6 +12,7 @@ import '../styles/MainContent.css';
 
 const MainContent = ({ searchTerm, handleApiTest, baseApiUrl }) => {
   const [expandedSections, setExpandedSections] = useState({});
+  const DEFAULT_COUNTRY = "DRC";
 
   const toggleSection = (id) => {
     setExpandedSections(prev => ({
@@ -706,7 +707,18 @@ const MainContent = ({ searchTerm, handleApiTest, baseApiUrl }) => {
   const filterEndpoints = (endpoints) => {
     if (!searchTerm) return endpoints;
     
-    return endpoints.filter(endpoint => 
+     return endpoints.map(endpoint => {
+      // Add default country to query parameters if they exist
+      if (endpoint.queryParams) {
+        endpoint.queryParams = endpoint.queryParams.map(param => {
+          if (param.name === 'country') {
+            return { ...param, defaultValue: DEFAULT_COUNTRY };
+          }
+          return param;
+        });
+      }
+      return endpoint;
+    }).filter(endpoint => 
       endpoint.path.toLowerCase().includes(searchTerm.toLowerCase()) ||
       endpoint.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       endpoint.method.toLowerCase().includes(searchTerm.toLowerCase())

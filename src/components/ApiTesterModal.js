@@ -1,4 +1,4 @@
-// components/ApiTesterModal.js - Modified to better handle URL parameters
+// components/ApiTesterModal.js - Enhanced with auto country detection
 import React, { useState, useEffect } from 'react';
 import '../styles/ApiTesterModal.css';
 
@@ -14,9 +14,49 @@ const ApiTesterModal = ({ config, onClose, baseApiUrl, onSaveData }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Country code mapping
+  const countryCodeMap = {
+    'wr': 'Rwanda',
+    'hg': 'Ghana', 
+    'bg': 'Gabon',
+    'cd': 'DRC',
+    'rf': 'France',
+    'eht': 'Ethiopia',
+    'bl': 'Libya'
+  };
+
   // Extract URL parameters from the path (anything in {})
   const urlParamPattern = /{([^}]+)}/g;
   const urlParamsInPath = [...path.matchAll(urlParamPattern)].map(match => match[1]);
+
+  // Function to detect country from token and auto-fill
+  const detectAndFillCountry = (tokenValue) => {
+    // Look for country codes at the end of the token (case insensitive)
+    const match = tokenValue.match(/\.([a-z]{2,3})$/i);
+    if (match) {
+      const countryCode = match[1].toLowerCase();
+      const countryName = countryCodeMap[countryCode];
+      if (countryName) {
+        setParams(prev => ({
+          ...prev,
+          country: countryName
+        }));
+      }
+    } else {
+      // Clear country if no valid code found (only if it was auto-filled before)
+      setParams(prev => ({
+        ...prev,
+        country: prev.country && Object.values(countryCodeMap).includes(prev.country) ? '' : prev.country
+      }));
+    }
+  };
+
+  // Function to remove country code from token
+  const cleanTokenForRequest = (tokenValue) => {
+    // Remove country codes from the end of the token
+    const cleanedToken = tokenValue.replace(/\.(rw|gh|gb|dc|fr|eth|lb)$/i, '');
+    return cleanedToken;
+  };
 
   useEffect(() => {
     // Initialize URL parameters
@@ -39,6 +79,11 @@ const ApiTesterModal = ({ config, onClose, baseApiUrl, onSaveData }) => {
     }
     setParams(initialParams);
     
+    // Auto-detect country from initial token
+    if (initialToken) {
+      detectAndFillCountry(initialToken);
+    }
+    
     // Initialize request body for POST/PUT
     if (method === 'POST' || method === 'PUT') {
       const initialBody = {};
@@ -51,7 +96,14 @@ const ApiTesterModal = ({ config, onClose, baseApiUrl, onSaveData }) => {
     }
 
     setError('');
-  }, [endpoint, method, path]);
+  }, [endpoint, method, path, initialToken]);
+
+  // Handle token changes with auto country detection
+  const handleTokenChange = (e) => {
+    const newToken = e.target.value;
+    setToken(newToken);
+    detectAndFillCountry(newToken);
+  };
 
   // Handle URL parameter changes
   const handleUrlParamChange = (e) => {
@@ -143,9 +195,12 @@ const ApiTesterModal = ({ config, onClose, baseApiUrl, onSaveData }) => {
     setResponseOutput('Loading...');
     
     try {
-      // Set up headers
+      // Clean the token by removing country code before using it in the request
+      const cleanedToken = cleanTokenForRequest(token);
+      
+      // Set up headers with cleaned token
       const headers = {
-        'Authorization': `Bearer ${token}`,
+        'Authorization': `Bearer ${cleanedToken}`,
         'x-refresh': 'your_refresh_token_here',
         'x-platform': platform
       };
@@ -243,11 +298,17 @@ const ApiTesterModal = ({ config, onClose, baseApiUrl, onSaveData }) => {
             </div>
           )}
           
-          <label>Authorization Bearer Token:</label>
+          <label>
+            Authorization Bearer Token:
+            <small style={{ display: 'block', color: '#666', fontWeight: 'normal', marginTop: '4px' }}>
+             
+            </small>
+          </label>
           <input 
             type="text" 
             value={token} 
-            onChange={(e) => setToken(e.target.value)} 
+            onChange={handleTokenChange}
+            placeholder="Enter your access token"
           />
           
           <label>Platform:</label>
@@ -262,13 +323,19 @@ const ApiTesterModal = ({ config, onClose, baseApiUrl, onSaveData }) => {
           {/* Query Parameters Section */}
           <h4>Query Parameters:</h4>
           
-          <label>Country:</label>
+          <label>
+            Country (auto-filled from token):
+            <small style={{ display: 'block', color: '#666', fontWeight: 'normal', marginTop: '4px' }}>
+              
+            </small>
+          </label>
           <input
             type="text"
             name="country"
             value={params.country || ""}
             onChange={handleParamChange}
-            placeholder="Filter by country (optional)"
+            placeholder=""
+            readOnly
           />
           
           {/* Additional query parameters */}
@@ -311,6 +378,8 @@ const ApiTesterModal = ({ config, onClose, baseApiUrl, onSaveData }) => {
           >
             {isLoading ? 'Executing...' : `Execute ${method} Request`}
           </button>
+          
+          
           
           <h4>Response:</h4>
           <pre>{responseOutput}</pre>
