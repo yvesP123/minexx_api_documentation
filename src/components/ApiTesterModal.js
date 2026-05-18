@@ -13,6 +13,20 @@ const ApiTesterModal = ({ config, onClose, baseApiUrl, onSaveData }) => {
   const [responseOutput, setResponseOutput] = useState('Response will appear here...');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const isLiveScreenEndpoint = path.startsWith('/livescreen');
+
+  const getQueryParamValueForRequest = (name, value) => {
+    if (
+      isLiveScreenEndpoint &&
+      name === 'country' &&
+      typeof value === 'string' &&
+      value.trim().toLowerCase() === 'rwanda'
+    ) {
+      return '.Rwanda';
+    }
+
+    return value;
+  };
 
   // Country code mapping
   const countryCodeMap = {
@@ -22,7 +36,8 @@ const ApiTesterModal = ({ config, onClose, baseApiUrl, onSaveData }) => {
     'cd': 'DRC',
     'rf': 'France',
     'eht': 'Ethiopia',
-    'bl': 'Libya'
+    'bl': 'Libya',
+    'tgo': 'Togo'
   };
 
   // Extract URL parameters from the path (anything in {})
@@ -54,7 +69,7 @@ const ApiTesterModal = ({ config, onClose, baseApiUrl, onSaveData }) => {
   // Function to remove country code from token
   const cleanTokenForRequest = (tokenValue) => {
     // Remove country codes from the end of the token
-    const cleanedToken = tokenValue.replace(/\.(wr|hg|bg|cd|rf|eht|bl)$/i, '');
+    const cleanedToken = tokenValue.replace(/\.(wr|hg|bg|cd|rf|eht|bl|tgo)$/i, '');
     return cleanedToken;
   };
 
@@ -62,7 +77,7 @@ const ApiTesterModal = ({ config, onClose, baseApiUrl, onSaveData }) => {
     // Initialize URL parameters
     const initialUrlParams = {};
     if (endpoint && endpoint.urlParams && endpoint.urlParams.length > 0) {
-      endpoint.urlParams.forEach(param => {
+      (endpoint.urlParams || []).forEach(param => {
         initialUrlParams[param.name] = "";
       });
     }
@@ -152,7 +167,7 @@ const ApiTesterModal = ({ config, onClose, baseApiUrl, onSaveData }) => {
     if (urlParamsInPath.length > 0) {
       const missingParams = [];
       
-      endpoint.urlParams.forEach(param => {
+      (endpoint.urlParams || []).forEach(param => {
         if (param.required && (!urlParamValues[param.name] || urlParamValues[param.name].trim() === '')) {
           missingParams.push(param.name);
         }
@@ -182,7 +197,7 @@ const ApiTesterModal = ({ config, onClose, baseApiUrl, onSaveData }) => {
     // Add non-empty query parameters
     Object.entries(params).forEach(([key, value]) => {
       if (value) {
-        queryParams.append(key, value);
+        queryParams.append(key, getQueryParamValueForRequest(key, value));
       }
     });
     

@@ -20,6 +20,7 @@ const Sidebar = ({ searchTerm, setSearchTerm }) => {
       { id: 'incidents', title: 'Incidents', type: 'subsection' },
       { id: 'integrations', title: 'Integrations', type: 'subsection' },
       { id: 'mines', title: 'Mines', type: 'subsection' },
+      { id: 'livescreen', title: 'Live Screen', type: 'subsection' },
       { id: 'overview-reports', title: 'Overview Reports', type: 'subsection' },
       { id: 'purchases', title: 'Purchases', type: 'subsection' },
       { id: 'reporting', title: 'Reporting', type: 'subsection' },

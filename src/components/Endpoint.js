@@ -5,7 +5,7 @@ import Tip from './Tip';
 import '../styles/Endpoint.css';
 
 const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
-  const { id, method, path, description, urlParams, queryParams, bodyParams, notes, hasTip } = endpoint;
+  const { id, method, path, description, urlParams = [], queryParams = [], bodyParams = [], notes, hasTip } = endpoint;
   const [showTryForm, setShowTryForm] = useState(false);
   const [formData, setFormData] = useState({
     token: localStorage.getItem('apiToken') || '',
@@ -16,6 +16,20 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
   });
   const [curlCommand, setCurlCommand] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const isLiveScreenEndpoint = path.startsWith('/livescreen');
+
+  const getQueryParamValueForRequest = (name, value) => {
+    if (
+      isLiveScreenEndpoint &&
+      name === 'country' &&
+      typeof value === 'string' &&
+      value.trim().toLowerCase() === 'rwanda'
+    ) {
+      return '.Rwanda';
+    }
+
+    return value;
+  };
   
   // Country code mapping
   const countryCodeMap = {
@@ -94,15 +108,28 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
     
     if (!showTryForm) {
       const storedToken = localStorage.getItem('apiToken') || '';
+      // Initialize form data with defaults
+      const initialQueryParams = {};
+      if (queryParams) {
+        queryParams.forEach(param => {
+          if (param.defaultValue) {
+            initialQueryParams[`query_${param.name}`] = Array.isArray(param.defaultValue) 
+              ? param.defaultValue.join(',')
+              : param.defaultValue;
+          }
+        });
+      }
+      
       // Reset form data when opening
       setFormData({
         token: storedToken,
         platform: localStorage.getItem('apiPlatform') || '3ts',
         country: '',
         urlParams: {},
-        bodyContent: bodyParams && bodyParams.length > 0 
+        bodyContent: bodyParams.length > 0 
           ? JSON.stringify(bodyParams.reduce((acc, param) => ({ ...acc, [param.name]: '' }), {}), null, 2)
-          : '{}'
+          : '{}',
+        ...initialQueryParams
       });
       
       // Auto-detect country from stored token
@@ -136,8 +163,40 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
       }
     });
     
+    // Build query parameters
+    const queryParamsArray = [];
+    if (formData.country) {
+      const countryValue = getQueryParamValueForRequest('country', formData.country);
+      queryParamsArray.push(`country=${encodeURIComponent(countryValue)}`);
+    }
+    
+    // Add all query params from the form data
+    if (queryParams.length > 0) {
+      queryParams.forEach(param => {
+        const value = formData[`query_${param.name}`];
+        if (value) {
+          // Handle array values (for mineral and similar params)
+          if (Array.isArray(value)) {
+            value.forEach(v => {
+              if (v) queryParamsArray.push(`${param.name}=${encodeURIComponent(getQueryParamValueForRequest(param.name, v))}`);
+            });
+          } else if (typeof value === 'string' && value.includes(',')) {
+            // Handle comma-separated values
+            value.split(',').forEach(v => {
+              if (v.trim()) queryParamsArray.push(`${param.name}=${encodeURIComponent(getQueryParamValueForRequest(param.name, v.trim()))}`);
+            });
+          } else {
+            queryParamsArray.push(`${param.name}=${encodeURIComponent(getQueryParamValueForRequest(param.name, value))}`);
+          }
+        }
+      });
+    }
+    
+    const queryString = queryParamsArray.length > 0 ? '?' + queryParamsArray.join('&') : '';
+    const fullPath = processedPath + queryString;
+    
     // Now call the API test function with the processed path
-    onApiTest({...endpoint, processedPath}, method, processedPath);
+    onApiTest({...endpoint, processedPath: fullPath}, method, fullPath);
   };
 
   const generateCurl = () => {
@@ -165,14 +224,37 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
     
     // Build full URL with query parameters
     let fullUrl = baseApiUrl + processedPath;
-    const queryParams = [];
+    const queryParamsArray = [];
     
     if (formData.country) {
-      queryParams.push(`country=${encodeURIComponent(formData.country)}`);
+      const countryValue = getQueryParamValueForRequest('country', formData.country);
+      queryParamsArray.push(`country=${encodeURIComponent(countryValue)}`);
     }
     
+    // Add all query params from the form data
     if (queryParams.length > 0) {
-      fullUrl += '?' + queryParams.join('&');
+      queryParams.forEach(param => {
+        const value = formData[`query_${param.name}`];
+        if (value) {
+          // Handle array values (for mineral and similar params)
+          if (Array.isArray(value)) {
+            value.forEach(v => {
+              if (v) queryParamsArray.push(`${param.name}=${encodeURIComponent(getQueryParamValueForRequest(param.name, v))}`);
+            });
+          } else if (typeof value === 'string' && value.includes(',')) {
+            // Handle comma-separated values
+            value.split(',').forEach(v => {
+              if (v.trim()) queryParamsArray.push(`${param.name}=${encodeURIComponent(getQueryParamValueForRequest(param.name, v.trim()))}`);
+            });
+          } else {
+            queryParamsArray.push(`${param.name}=${encodeURIComponent(getQueryParamValueForRequest(param.name, value))}`);
+          }
+        }
+      });
+    }
+    
+    if (queryParamsArray.length > 0) {
+      fullUrl += '?' + queryParamsArray.join('&');
     }
     
     // Clean the token by removing country code before using it in the request
@@ -245,7 +327,7 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
       
       <p><strong>Description</strong>: {description}</p>
       
-      {urlParams && urlParams.length > 0 && (
+      {urlParams.length > 0 && (
         <>
           <p><strong>URL Parameters</strong>:</p>
           <ul>
@@ -258,7 +340,7 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
         </>
       )}
       
-      {queryParams && queryParams.length > 0 && (
+      {queryParams.length > 0 && (
         <>
           <p><strong>Query Parameters</strong>:</p>
           <ul>
@@ -271,7 +353,7 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
         </>
       )}
       
-      {bodyParams && bodyParams.length > 0 && (
+      {bodyParams.length > 0 && (
         <>
           <p><strong>Request Body</strong>:</p>
           <ul>
@@ -331,6 +413,35 @@ const Endpoint = ({ endpoint, onApiTest, baseApiUrl }) => {
                     className={param.required ? 'required-input' : ''}
                   />
                   <small className="param-description">{param.description}</small>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Query Parameters */}
+          {queryParams.length > 0 && (
+            <div className="query-params-section">
+              <h5>Query Parameters:</h5>
+              {queryParams.map(param => (
+                <div key={param.name} className="query-param-input">
+                  <label htmlFor={`query_${param.name}-${id}`}>
+                    {param.name} {param.required && <span className="required">*</span>}:
+                  </label>
+                  <input
+                    type="text"
+                    id={`query_${param.name}-${id}`}
+                    name={`query_${param.name}`}
+                    value={formData[`query_${param.name}`] || param.defaultValue || ''}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      [`query_${param.name}`]: e.target.value
+                    }))}
+                    placeholder={`Example: ${param.defaultValue || param.name}`}
+                    required={param.required}
+                    className={param.required ? 'required-input' : ''}
+                  />
+                  <small className="param-description">{param.description}</small>
+                  {param.defaultValue && <small style={{ color: '#999', display: 'block' }}>Default: {Array.isArray(param.defaultValue) ? param.defaultValue.join(', ') : param.defaultValue}</small>}
                 </div>
               ))}
             </div>

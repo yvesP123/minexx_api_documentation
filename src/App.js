@@ -22,7 +22,28 @@ function App() {
     platform: '3ts'
   });
 
-  const baseApiUrl = "https://minexxapi-db-p7n5ing2cq-uc.a.run.app";
+  // Detect if token is for Togo
+  const isTogoToken = (token) => token && token.includes('.tgo');
+
+  // Get base API URL based on token
+  const getBaseApiUrl = (token) => {
+    if (isTogoToken(token)) {
+      return "https://minexxapi-togo-clone-p7n5ing2cq-uc.a.run.app";
+    }
+    return "https://minexxapi-livescreen-p7n5ing2cq-uc.a.run.app";
+  };
+
+  // Get default platform based on token
+  const getDefaultPlatform = (token) => {
+    if (isTogoToken(token)) {
+      return 'Gold';
+    }
+    return '3ts';
+  };
+
+  const savedToken = localStorage.getItem('apiToken') || '';
+  const baseApiUrl = getBaseApiUrl(savedToken);
+  const defaultPlatform = getDefaultPlatform(savedToken);
 
   useEffect(() => {
     localStorage.setItem('darkMode', darkMode);
@@ -30,12 +51,13 @@ function App() {
   }, [darkMode]);
 
   const handleApiTest = (endpoint, method, path) => {
+    const token = localStorage.getItem('apiToken') || '';
     setApiTesterConfig({
       endpoint,
       method,
       path,
-      token: localStorage.getItem('apiToken') || '',
-      platform: localStorage.getItem('apiPlatform') || '3ts'
+      token: token,
+      platform: localStorage.getItem('apiPlatform') || getDefaultPlatform(token)
     });
     setShowApiTesterModal(true);
   };
@@ -46,7 +68,12 @@ function App() {
 
   const saveTesterData = (token, platform) => {
     localStorage.setItem('apiToken', token);
-    localStorage.setItem('apiPlatform', platform);
+    // If token is Togo and platform not explicitly set, default to Gold
+    if (isTogoToken(token) && !platform) {
+      localStorage.setItem('apiPlatform', 'Gold');
+    } else if (platform) {
+      localStorage.setItem('apiPlatform', platform);
+    }
   };
 
   return (

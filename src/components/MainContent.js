@@ -387,6 +387,79 @@ const MainContent = ({ searchTerm, handleApiTest, baseApiUrl }) => {
       notes: 'This endpoint uses a hardcoded ID \'ce62eb6o\' and platform \'3ts\'.'
     }
   ];
+  //Live Screen endpoints
+  const liveScreenEndpoints = [
+    {
+      id: 'get-Export Status',
+      method: 'GET',
+      path: '/livescreen/export/metrics',
+      description: 'Get all Export Status.',
+      queryParams: [
+        { name: 'country', description: 'Filter by country (e.g., Rwanda, DRC).', required: false },
+        { name: 'mineral', description: 'Filter by mineral type. Multiple values supported (e.g., Tin, Tantalum).', required: false, defaultValue: ['Tin', 'Tantalum'] }
+      ]
+    },
+    {
+      id: 'get-latest-export-metrics',
+      method: 'GET',
+      path: '/livescreen/export/latest',
+      description: 'Get latest export metrics.',
+      queryParams: [
+        { name: 'country', description: 'Filter by country (required).', required: true }
+      ]
+    },
+    {
+      id: 'get-current-stock',
+      method: 'GET',
+      path: '/livescreen/containers',
+      description: 'Get Current Stock for Rwanda',
+      queryParams: [
+        { name: 'country', description: 'Filter by country (e.g., Rwanda).', required: false },
+        { name: 'mineral', description: 'Filter by mineral type. Multiple values supported (e.g., Cassiterite, coltan).', required: false, defaultValue: ['Cassiterite', 'coltan'] }
+      ]
+    },
+    {
+      id: 'get-current-stock-drc',
+      method: 'GET',
+      path: '/livescreen/containers/drc',
+      description: 'Get Current Stock for DRC',
+      queryParams: [
+        { name: 'country', description: 'Filter by country (e.g., DRC).', required: false },
+        { name: 'mineral', description: 'Filter by mineral type. Multiple values supported (e.g., Cassiterite, coltan).', required: false, defaultValue: ['Cassiterite', 'coltan'] }
+      ]
+    },
+    {
+      id: 'get-purchase-metrics',
+      method: 'GET',
+      path: '/livescreen/purchases',
+      description: 'Get Purchase metrics',
+      queryParams: [
+        { name: 'country', description: 'Filter by country (e.g., DRC).', required: false },
+        { name: 'mineral', description: 'Filter by mineral type. Multiple values supported (e.g., Cassiterite).', required: false, defaultValue: ['Cassiterite'] }
+      ]
+    },
+    {
+      id: 'get-shipping-status',
+      method: 'POST',
+      path: '/livescreen/weight/shipping-status',
+      description: 'Get Container in Transit (net weight by shipping status).',
+      queryParams: [
+        { name: 'country', description: 'Filter by country (e.g., Rwanda).', required: false },
+        { name: 'mineral', description: 'Filter by mineral type. Multiple values supported (e.g., Tin, Tantalum).', required: false, defaultValue: ['Tin', 'Tantalum'] }
+      ]
+    },
+    {
+      id: 'get-container-status',
+      method: 'POST',
+      path: '/livescreen/container-status',
+      description: 'Set container status.',
+      queryParams: [
+        { name: 'country', description: 'Country identifier (required).', required: true },
+        { name: 'exportId', description: 'Export ID (required).', required: true },
+        { name: 'status', description: 'Status to set (required).', required: true }
+      ]
+    }
+  ];
 
   // Overview Report endpoints
   const overviewReportEndpoints = [
@@ -433,8 +506,14 @@ const MainContent = ({ searchTerm, handleApiTest, baseApiUrl }) => {
     {
       id: 'get-purchases',
       method: 'GET',
-      path: '/purchases',
-      description: 'Get all purchases for the requesting user.'
+      path: '/purchases/{id}',
+      description: 'Get all purchases for the requesting user.',
+      urlParams: [
+        { name: 'id', description: 'User identifier for the purchases request.', required: true }
+      ],
+      queryParams: [
+        { name: 'country', description: 'Filter overview by country.', required: false }
+      ]
     },
     {
       id: 'get-report-daily',
@@ -594,6 +673,25 @@ const MainContent = ({ searchTerm, handleApiTest, baseApiUrl }) => {
       queryParams: [
         { name: 'country', description: 'Filter report by country.', required: false },
         { name: 'year', description: 'Year for the trend graph.', required: true }
+      ]
+    },
+    {
+      id: 'get-report-suppliercomposition',
+      method: 'GET',
+      path: '/report/suppliercomposition',
+      description: 'Get the chemical composition report for suppliers, filtered by country and mineral type.',
+      queryParams: [
+        { name: 'country', description: 'Filter report by country.', required: false },
+        { name: 'mineral', description: 'The mineral type to retrieve chemical composition for (e.g. cassiterite, coltan, wolframite).', required: false }
+      ]
+    },
+    {
+      id: 'get-report-mtd6months',
+      method: 'GET',
+      path: '/report/mtd6months',
+      description: 'Get the month-to-date balance report for the past 6 months.',
+      queryParams: [
+        { name: 'country', description: 'Filter report by country.', required: false }
       ]
     }
   ];
@@ -882,6 +980,18 @@ const MainContent = ({ searchTerm, handleApiTest, baseApiUrl }) => {
           <Element name="mines">
             <SubSection id="mines" title="Mines" toggleSection={toggleSection} isExpanded={expandedSections['mines']}>
               {filterEndpoints(mineEndpoints).map(endpoint => (
+                <Endpoint 
+                  key={endpoint.id}
+                  endpoint={endpoint}
+                  onApiTest={handleApiTest}
+                  baseApiUrl={baseApiUrl}
+                />
+              ))}
+            </SubSection>
+          </Element>
+           <Element name="livescreen">
+            <SubSection id="livescreen" title="Live Screen" toggleSection={toggleSection} isExpanded={expandedSections['livescreen']}>
+              {filterEndpoints(liveScreenEndpoints).map(endpoint => (
                 <Endpoint 
                   key={endpoint.id}
                   endpoint={endpoint}
