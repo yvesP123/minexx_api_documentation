@@ -858,12 +858,8 @@ const MainContent = ({ searchTerm, handleApiTest, baseApiUrl }) => {
             </thead>
             <tbody>
               <tr>
-                <td><code>authorization</code></td>
+                <td><code>Authorization</code></td>
                 <td>The 'Bearer' access token received at login</td>
-              </tr>
-              <tr>
-                <td><code>x-refresh</code></td>
-                <td>The refresh token received at login to refresh access token if expired</td>
               </tr>
               <tr>
                 <td><code>x-platform</code></td>
@@ -1101,7 +1097,7 @@ const MainContent = ({ searchTerm, handleApiTest, baseApiUrl }) => {
           <CodeBlock>
 {`{
   "success": false,
-  "error": "Error message description"
+  "message": "Error message description"
 }`}
           </CodeBlock>
         </Section>
@@ -1116,7 +1112,6 @@ const MainContent = ({ searchTerm, handleApiTest, baseApiUrl }) => {
                 <CodeBlock>
 {`curl -X POST https://minexxapi-db-p7n5ing2cq-uc.a.run.app/login \\
   -H "Content-Type: application/json" \\
-  -H "x-platform: 3ts" \\
   -d '{
     "email": "user@example.com",
     "password": "yourpassword"
@@ -1127,9 +1122,8 @@ const MainContent = ({ searchTerm, handleApiTest, baseApiUrl }) => {
                 <h4>Response:</h4>
                 <CodeBlock>
 {`{
-  "success": true,
-  "data": {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
     "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
     "user": {
       "id": "u12345",
@@ -1138,7 +1132,7 @@ const MainContent = ({ searchTerm, handleApiTest, baseApiUrl }) => {
       "email": "user@example.com",
       "role": "admin"
     }
-  }
+  
 }`}
                 </CodeBlock>
               </div>
@@ -1152,7 +1146,6 @@ const MainContent = ({ searchTerm, handleApiTest, baseApiUrl }) => {
                 <CodeBlock>
 {`curl -X GET https://minexxapi-db-p7n5ing2cq-uc.a.run.app/companies \\
   -H "Authorization: Bearer your_access_token_here" \\
-  -H "x-refresh: your_refresh_token_here" \\
   -H "x-platform: 3ts"`}
                 </CodeBlock>
               </div>
@@ -1161,22 +1154,15 @@ const MainContent = ({ searchTerm, handleApiTest, baseApiUrl }) => {
                 <CodeBlock>
 {`{
   "success": true,
-  "data": [
+  "companies": [
     {
       "id": "comp123",
       "name": "Mining Corporation Ltd.",
       "country": "Rwanda",
-      "status": "active",
-      "created": "2024-12-10T14:35:22Z"
-    },
-    {
-      "id": "comp124",
-      "name": "Mineral Exports Inc.",
-      "country": "DRC",
-      "status": "pending",
-      "created": "2025-01-15T09:12:45Z"
-    }
-  ]
+      "type": "Miner",
+      "last_updated": "2024-12-10T14:35:22Z"
+  }
+ ]
 }`}
                 </CodeBlock>
               </div>
@@ -1191,18 +1177,18 @@ const MainContent = ({ searchTerm, handleApiTest, baseApiUrl }) => {
 {`# Invalid authentication
 curl -X GET https://minexxapi-db-p7n5ing2cq-uc.a.run.app/companies \\
   -H "Authorization: Bearer invalid_token_here" \\
-  -H "x-refresh: your_refresh_token_here" \\
   -H "x-platform: 3ts"`}
                 </CodeBlock>
               </div>
               <div className="response-example">
                 <h4>Response:</h4>
                 <CodeBlock>
-{`{
-  "success": false,
-  "error": "Unauthorized access. Authentication token is invalid or expired.",
-  "code": 401
-}`}
+{`
+  {
+    "message": "You are missing valid session credentials to process your request.",
+    "status": "error"
+  }
+`}
                 </CodeBlock>
               </div>
             </SubSection>
