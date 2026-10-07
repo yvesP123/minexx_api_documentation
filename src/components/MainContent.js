@@ -1210,6 +1210,7 @@ curl -X GET https://minexxapi-db-p7n5ing2cq-uc.a.run.app/companies \\
             <p><strong>Default Platform:</strong> <code>x-platform: 3ts</code></p>
             <p>Remember to include the country parameter where applicable for filtering results.</p>
           </Note>
+          
         </Section>
       </Element>
     </div>
